@@ -1,0 +1,10 @@
+# 环境与密钥（绝不入库）
+.env
+
+# Python 运行时产物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/

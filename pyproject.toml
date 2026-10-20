@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myclaude"
+version = "1.0.0"
+description = "A minimal coding agent inspired by Claude Code, built from scratch in Python"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "anthropic>=0.40.0",
+    "openai>=1.66.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+myclaude = "MyClaude.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["MyClaude*"]
+
+[tool.setuptools.package-data]
+MyClaude = ["system_prompt.md"]
