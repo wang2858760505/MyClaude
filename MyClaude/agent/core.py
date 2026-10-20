@@ -11,6 +11,7 @@ from MyClaude.agent.autonomy_runner import AutonomyRunnerMixin
 from MyClaude.agent.auto_permission import AutoPermissionMixin
 from MyClaude.agent.special_tools import SpecialToolsMixin
 from MyClaude.agent.session_store import SessionStoreMixin
+from MyClaude.hooks import execute_tool_checked
 from MyClaude.agent.constants import AUTO_MODE_FAST_PATH_TOOLS, Any, Awaitable, CONCURRENCY_SAFE_TOOLS, Callable, McpManager, MemoryPrefetch, ToolDef, _get_context_window, _get_max_output_tokens, _model_supports_adaptive_thinking, _model_supports_thinking, _to_openai_tools, _to_responses_tools, _with_retry, anthropic, asyncio, build_dynamic_system_context, build_static_system_prompt, build_user_context_reminder, check_permission, execute_tool, format_memories_for_injection, get_active_tool_definitions, json, openai, os, print_assistant_text, print_confirmation, print_cost, print_divider, print_info, print_tool_call, print_tool_result, start_memory_prefetch, start_spinner, stop_spinner, time, tool_definitions, uuid
 
 
@@ -882,7 +883,8 @@ class Agent(CompressionMixin, BudgetMixin, AutonomyRunnerMixin, AutoPermissionMi
         # Route MCP tool calls to the MCP manager
         if self._mcp_manager.is_mcp_tool(name):
             return await self._mcp_manager.call_tool(name, inp)
-        return await execute_tool(name, inp)
+        # 插桩包装：Pre/PostToolUse 钩子 + 审计 JSONL + 只读工具结果缓存
+        return await execute_tool_checked(name, inp, self._read_file_state, session_id=self.session_id)
 
     def _push_anthropic_user_message(self, content: str) -> None:
         """Push a user message, prepending the CLAUDE.md/date <system-reminder>

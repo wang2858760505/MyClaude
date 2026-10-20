@@ -170,3 +170,53 @@ def resolve_provider(explicit: str | None = None, api_base_override: str | None 
         "No API key found for any provider.\n"
         "  Set one of the following environment variables:\n    " + "\n    ".join(missing)
     )
+
+
+# ── 运行时健康检查（IO，非纯函数；供 --check 启动预检使用）──────────────
+
+# 协议默认官方端点（供应商 base_url 为 None 时兜底）
+DEFAULT_ENDPOINTS: dict[str, str] = {
+    "openai": "https://api.openai.com/v1",
+    "responses": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com/v1",
+}
+
+
+async def check_provider_health(resolved: ResolvedProvider, timeout: float = 8.0) -> dict:
+    """对选中供应商发一次 GET /models 轻量探测，验证两件事：
+    端点可达 + API key 有效。不消耗模型 token（models 列表不计费）。
+
+    返回 {"ok": bool, "latency_ms": float, "detail": str}。
+    网关 404 视为基本健康（部分第三方网关不暴露 /models，但 chat 端点可用）。
+    """
+    import httpx  # anthropic / openai SDK 的传递依赖，必然已安装
+
+    proto = resolved.provider.protocol
+    base = (resolved.base_url or DEFAULT_ENDPOINTS.get(proto, "")).rstrip("/")
+    url = f"{base}/models"
+    if proto == "anthropic":
+        headers = {"x-api-key": resolved.api_key, "anthropic-version": "2023-06-01"}
+    else:
+        headers = {"Authorization": f"Bearer {resolved.api_key}"}
+
+    start = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.TimeoutException:
+        return {"ok": False, "latency_ms": (time.monotonic() - start) * 1000,
+                "detail": f"Timeout connecting to {url}"}
+    except httpx.HTTPError as e:
+        return {"ok": False, "latency_ms": (time.monotonic() - start) * 1000,
+                "detail": f"Connection failed: {e}"}
+
+    latency_ms = (time.monotonic() - start) * 1000
+    if resp.status_code == 200:
+        return {"ok": True, "latency_ms": latency_ms, "detail": f"API key valid, endpoint {url} reachable"}
+    if resp.status_code in (401, 403):
+        return {"ok": False, "latency_ms": latency_ms,
+                "detail": f"HTTP {resp.status_code}: API key rejected ({resolved.provider.api_key_env})"}
+    if resp.status_code == 404:
+        return {"ok": True, "latency_ms": latency_ms,
+                "detail": f"HTTP 404 on /models (gateway may not expose it) — endpoint reachable"}
+    return {"ok": False, "latency_ms": latency_ms, "detail": f"HTTP {resp.status_code} from {url}"}

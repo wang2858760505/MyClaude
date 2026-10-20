@@ -32,6 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", "-m", default=None, help="Model to use (default: per provider)")
     parser.add_argument("--provider", "-p", default=None, help="LLM provider: deepseek/qwen/anthropic/openai/openai-responses (auto-detected from env)")
     parser.add_argument("--api-base", default=None, help="Override API base URL")
+    parser.add_argument("--check", action="store_true", help="Provider health check: verify API key and endpoint reachability, then exit")
     parser.add_argument("--resume", action="store_true", help="Resume last session")
     parser.add_argument("--max-cost", type=float, default=None, help="Max USD spend")
     parser.add_argument("--max-turns", type=int, default=None, help="Max agentic turns")
@@ -284,6 +285,18 @@ Examples:
     except ProviderError as e:
         print_error(str(e))
         sys.exit(1)
+
+    # ── 健康检查预检（--check）：验证 key + 端点连通性后退出，不进 REPL ──
+    if args.check:
+        import asyncio
+        from .providers import check_provider_health
+        result = asyncio.run(check_provider_health(resolved))
+        latency = f"{result['latency_ms']:.0f}ms"
+        if result["ok"]:
+            print_info(f"Health check OK — {resolved.provider.name} ({latency}): {result['detail']}")
+        else:
+            print_error(f"Health check FAILED — {resolved.provider.name} ({latency}): {result['detail']}")
+        sys.exit(0 if result["ok"] else 1)
 
     # 模型选择：--model > MYCLAUDE_MODEL > MINI_CLAUDE_MODEL（向后兼容）> 供应商默认
     model = (
