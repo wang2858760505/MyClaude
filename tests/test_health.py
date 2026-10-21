@@ -11,7 +11,10 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import httpx
+try:
+    import httpx  # 旧依赖链（SDK 1.x 时代）的传递依赖
+except ImportError:  # 新版 SDK 依赖链只装 httpx2，API 兼容
+    import httpx2 as httpx
 
 from MyClaude.providers import DEFAULT_ENDPOINTS, ResolvedProvider, Provider, check_provider_health
 

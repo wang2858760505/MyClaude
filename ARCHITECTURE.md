@@ -12,8 +12,8 @@ MyClaude 是一个**终端里的编程 Agent**：你用自然语言提需求，�
 | 指标 | 数值 |
 |------|------|
 | 包代码 | 22 个 .py 文件，约 4,415 行 |
-| 测试 | 6 个文件，70 个用例 |
-| 第三方依赖（运行时） | 仅 3 个：`anthropic`、`openai`、`rich` |
+| 测试 | 8 个文件，97 个用例 |
+| 第三方依赖（运行时） | 仅 4 个：`anthropic`、`openai`、`rich`、`httpx2` |
 | 内置工具 | 11 个 + 1 个延迟加载器 + MCP 动态工具 |
 | 权限模式 | 6 种 |
 | LLM 协议 | 3 种（Anthropic Messages / OpenAI Chat Completions / OpenAI Responses） |

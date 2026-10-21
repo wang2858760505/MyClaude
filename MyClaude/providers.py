@@ -189,7 +189,10 @@ async def check_provider_health(resolved: ResolvedProvider, timeout: float = 8.0
     返回 {"ok": bool, "latency_ms": float, "detail": str}。
     网关 404 视为基本健康（部分第三方网关不暴露 /models，但 chat 端点可用）。
     """
-    import httpx  # anthropic / openai SDK 的传递依赖，必然已安装
+    try:
+        import httpx  # 旧依赖链（SDK 1.x 时代）的传递依赖
+    except ImportError:  # 新版 SDK 依赖链只装 httpx2，API 兼容
+        import httpx2 as httpx
 
     proto = resolved.provider.protocol
     base = (resolved.base_url or DEFAULT_ENDPOINTS.get(proto, "")).rstrip("/")
