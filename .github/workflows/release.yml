@@ -1,0 +1,53 @@
+# CD：打 tag（v*）时自动构建发布包；GitHub Release 发布时推送到 PyPI
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist + wheel
+        run: |
+          pip install build
+          python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # GitHub Release 事件时，把构建产物挂到 Release 页面
+      - name: Attach artifacts to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+  # 推送 PyPI：需要一次性在 pypi.org 配置 Trusted Publisher
+  # （pypi.org → 项目管理 → Publishing → 填 GitHub 仓库/工作流名 release.yml）。
+  # 未配置前此 job 会失败——不想发 PyPI 就删掉这个 job。
+  publish-pypi:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # OIDC trusted publishing，无需配置 token secret
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

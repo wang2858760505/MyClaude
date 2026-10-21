@@ -1,0 +1,32 @@
+# CI：每次 push / PR 自动跑全量测试（离线，无需任何 API key）
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false # 一个组合失败不取消其他组合，便于定位平台相关问题
+      matrix:
+        # 项目在 Windows 开发，Linux 是主流部署环境，双平台都验证
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"] # requires-python >= 3.11 的两端
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install project + test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: pytest tests/ -q --cov=MyClaude --cov-report=term-missing
