@@ -58,7 +58,9 @@ def _get_index_path() -> Path:
 
 
 def _slugify(text: str) -> str:
-    s = re.sub(r"[^a-z0-9]+", "_", text.lower())
+    # \w is Unicode-aware for str patterns, so CJK titles keep their
+    # characters instead of collapsing to an empty slug and colliding.
+    s = re.sub(r"[^\w]+", "_", text.lower())
     s = s.strip("_")
     return s[:40]
 
